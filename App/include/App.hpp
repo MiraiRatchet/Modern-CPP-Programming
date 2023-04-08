@@ -19,15 +19,15 @@ struct DirectorInfo {
 
 class App {
  public:
-    static const int directorsInfoCheck(std::string nameBasicsFilename, std::string director, std::unique_ptr<DirectorInfo>& directorInfo);
+    static const int directorsInfoCheck(std::string nameBasicsFilename, std::string director, DirectorInfo& directorInfo);
 
-    static int checkIfIsDirector(std::string titleCrewFilename, std::unique_ptr<DirectorInfo>& directorInfo);
+    static int checkIfIsDirector(std::string titleCrewFilename, DirectorInfo& directorInfo);
 
-    static int checkIfIsAdult(std::string titleBasicsFileame, std::unique_ptr<DirectorInfo>& directorInfo);
+    static int checkIfIsAdult(std::string titleBasicsFileame, DirectorInfo& directorInfo);
 
-    static int checkRussianRegion(std::string titleAkasFilename, std::unique_ptr<DirectorInfo>& directorInfo);
+    static int checkRussianRegion(std::string titleAkasFilename, DirectorInfo& directorInfo);
 
-    static int parseCmd(std::unordered_map<std::string, std::string>* cmdLineArguments, int argc, char** argv);
+    static int parseCmd(std::unordered_map<std::string, std::string>& cmdLineArguments, int argc, char** argv);
 
     static int Run(int argc, char** argv);
 };
