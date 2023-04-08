@@ -10,6 +10,7 @@ env:
 
 jobs:
   cppcheck:
+    permissions: write-all
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -35,13 +36,14 @@ jobs:
     - name: Clang-format
       uses: DoozyX/clang-format-lint-action@v0.14
       with:
-        source: './src ./include'
+        source: './src ./App/include ./App/src'
         exclude: './tests'
         extensions: 'hpp,cpp'
         clangFormatVersion: 14
         style: 'file:config/.clang-format'
 
   clang-tidy:
+    permissions: write-all
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
@@ -74,7 +76,7 @@ jobs:
       run: pip install cpplint
 
     - name: Run cpplint
-      run: cpplint -filter=-build/include_subdir --filter=-runtime/int --root=./ ./src ./App/src ./App/include ./tests
+      run: cpplint.py --filter=-build/include_subdir --filter=-runtime/int --root=./ ./src ./App/src ./App/include ./tests
   test:
     permissions: write-all
     runs-on: ubuntu-latest
@@ -89,7 +91,7 @@ jobs:
         cmake --build build
     - name: Run tests
       run: |
-        ctest --output-on-failure --repeat-until-fail 100 --test-dir ./build/tests
+        ctest --output-on-failure --repeat-until-fail 100 --test-dir ./build/tests/
         sudo apt-get update -y           
         sudo apt-get install -y gcovr
         gcovr -e '.*googletest*' -x >> cover.xml

@@ -10,7 +10,7 @@ set(Subdirectories App)
 add_subdirectory(${Subdirectories})
 set(BuildSource src/imdbdataanalyze.cpp)
 
-option(TestingEnabled ON)
+set(TestingEnabled ON)
 if(${TestingEnabled})
     add_subdirectory(tests)
 endif()
