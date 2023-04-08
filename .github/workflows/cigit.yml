@@ -42,6 +42,7 @@ jobs:
         style: 'file:config/.clang-format'
 
   clang-tidy:
+    runs-on: ubuntu-latest
     steps:
     - name: Checkout
       uses: actions/checkout@v3
@@ -71,6 +72,6 @@ jobs:
 
     - name: Install cpplint
       run: pip install cpplint
-      
+
     - name: Run cpplint
       run: cpplint -filter=-build/include_subdir --filter=-runtime/int --root=./ ./src ./App/src ./App/include ./tests
