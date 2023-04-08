@@ -1,188 +1,153 @@
 // Copyright(c) 2023 Klimova Mary
 #include "App.hpp"
 
-int App::Run(int argc, char **argv) {
-    const int neededArgsNum = 6;
-    if (argc != neededArgsNum) {
+namespace {
+constexpr int neededArgumentsNumber = 6;
+bool rightNumberOfCmdLineArgs(int argc) {
+    if (argc != neededArgumentsNumber) {
         std::cerr << "Wrong number of input arguments" << std::endl;
+        return false;
+    }
+    return true;
+}
+}  // namespace
+
+int App::Run(int argc, char** argv) {
+    if (!rightNumberOfCmdLineArgs(argc)) {
         return 1;
     }
-    std::map<std::string, std::string> arguments = {{"-nbasics", ""},
-                                                    {"-tcrew", ""},
-                                                    {"-tbasics", ""},
-                                                    {"-takas", ""},
-                                                    {"-dir", ""}};
+    std::unordered_map<std::string, std::string> arguments = {{"-nbasics", ""}, {"-tcrew", ""}, {"-tbasics", ""}, {"-takas", ""}, {"-dir", ""}};
     if (parseCmd(&arguments, argc, argv)) {
         return 2;
     }
-    std::unique_ptr<directorInfo> dirInfo = std::make_unique<directorInfo>();
+    std::unique_ptr<DirectorInfo> directorInfo = std::make_unique<DirectorInfo>();
     std::cout << "Searching for the director..." << std::endl;
-    if (App::directorsInfoCheck(arguments["-nbasics"], arguments["-dir"],
-                                dirInfo)) {
+    if (App::directorsInfoCheck(arguments["-nbasics"], arguments["-dir"], directorInfo)) {
         return 3;
     }
     std::cout << "Director found! Checking titles..." << std::endl;
 
-    checkIfIsDirector(arguments["-tcrew"], dirInfo);
+    checkIfIsDirector(arguments["-tcrew"], directorInfo);
 
-    if (dirInfo->knownForTitles.size() == 0) {
-        std::cout << "No known titles for this director "
-                     "in IMDB"
-                  << std::endl;
+    if (directorInfo->directorsTitles.size() == 0) {
+        std::cout << "No known titles for this director in IMDB" << std::endl;
         return 4;
     }
-    std::cout << "This director has " << dirInfo->knownForTitles.size()
-              << " titles. Checking..." << std::endl;
+    std::cout << "This director has " << directorInfo->directorsTitles.size() << " titles. Checking..." << std::endl;
 
-    std::cout << "Filtering adult movies and other types of media..."
-              << std::endl;
-    checkIfIsAdult(arguments["-tbasics"], dirInfo);
-    std::cout << "Found " << dirInfo->knownForTitles.size() << " inique titles."
-              << std::endl;
+    std::cout << "Filtering adult movies and other types of media..." << std::endl;
+    checkIfIsAdult(arguments["-tbasics"], directorInfo);
+    std::cout << "Found " << directorInfo->directorsTitles.size() << " inique titles." << std::endl;
 
     std::cout << "Checking if there are russian movies..." << std::endl;
 
-    checkRussianRegion(arguments["-takas"], dirInfo);
+    checkRussianRegion(arguments["-takas"], directorInfo);
     std::cout << std::endl;
     return 0;
 }
 
-const int App::directorsInfoCheck(
-    std::string nbasname, std::string director,
-    std::unique_ptr<directorInfo> const &dirInfo) {
-    std::ifstream imdbnbas;
-    imdbnbas.open(nbasname);
-    if (!imdbnbas.is_open()) {
-        std::cout << "Names database is not opened." << std::endl;
-        return 1;
-    }
+const int App::directorsInfoCheck(std::string nameBasicsFilename, std::string director, std::unique_ptr<DirectorInfo>& directorInfo) {
+    auto IMDBNameBasicsStream = std::make_unique<std::fstream>(nameBasicsFilename);
     std::string line = "";
-    getline(imdbnbas, line);
-    dirInfo->nameDirector = "";
-    while (director != dirInfo->nameDirector && !imdbnbas.eof()) {
-        getline(imdbnbas, dirInfo->idDirector, '\t');
-        getline(imdbnbas, dirInfo->nameDirector, '\t');
-        getline(imdbnbas, line);
+    getline(*IMDBNameBasicsStream, line);
+    directorInfo->directorName = "";
+    while (director != directorInfo->directorName && !(*IMDBNameBasicsStream).eof()) {
+        getline(*IMDBNameBasicsStream, directorInfo->directorId, '\t');
+        getline(*IMDBNameBasicsStream, directorInfo->directorName, '\t');
+        getline(*IMDBNameBasicsStream, line);
     }
-    imdbnbas.close();
-    if (dirInfo->nameDirector != director) {
+    if (directorInfo->directorName != director) {
         std::cout << "Person not found in IMDB database" << std::endl;
         return 1;
     }
     return 0;
 }
 
-int App::checkIfIsDirector(std::string tcrewname,
-                           std::unique_ptr<directorInfo> const &dirInfo) {
-    std::ifstream imdbtcrew;
-    imdbtcrew.open(tcrewname);
-    if (!imdbtcrew.is_open()) {
-        std::cout << "File with crew is not opened" << std::endl;
-        return 1;
-    }
+int App::checkIfIsDirector(std::string titleCrewFilename, std::unique_ptr<DirectorInfo>& directorInfo) {
+    auto IMDBTitleCrewStream = std::make_unique<std::fstream>(titleCrewFilename);
     std::string tline = "", dline = "";
-    getline(imdbtcrew, tline);
-    while (!imdbtcrew.eof()) {
-        getline(imdbtcrew, tline, '\t');
-        getline(imdbtcrew, dline, '\t');
-        if (dline == dirInfo->idDirector) {
-            dirInfo->knownForTitles.push_back(tline);
+    getline(*IMDBTitleCrewStream, tline);
+    while (!(*IMDBTitleCrewStream).eof()) {
+        getline(*IMDBTitleCrewStream, tline, '\t');
+        getline(*IMDBTitleCrewStream, dline, '\t');
+        if (dline == directorInfo->directorId) {
+            directorInfo->directorsTitles.push_back(tline);
         }
-        getline(imdbtcrew, tline);
+        getline(*IMDBTitleCrewStream, tline);
     }
-    imdbtcrew.close();
     return 0;
 }
 
-int App::checkIfIsAdult(std::string tbasname,
-                        std::unique_ptr<directorInfo> const &df) {
-    std::ifstream imdbtbas;
-    imdbtbas.open(tbasname);
-    if (!imdbtbas.is_open()) {
-        std::cout << "File with titles database is not opened" << std::endl;
-        return 1;
-    }
+int App::checkIfIsAdult(std::string titleBasicsFilename, std::unique_ptr<DirectorInfo>& directorInfo) {
+    auto IMDBTitleBasicsStream = std::make_unique<std::fstream>(titleBasicsFilename);
     std::string line = "";
     int i = 0;
-    getline(imdbtbas, line);
-    while (i < df->knownForTitles.size() && !imdbtbas.eof()) {
-        getline(imdbtbas, line, '\t');
-        auto it = std::find(df->knownForTitles.begin(),
-                            df->knownForTitles.end(), line);
-        if (it != df->knownForTitles.end()) {
+    getline(*IMDBTitleBasicsStream.get(), line);
+    while (i < directorInfo->directorsTitles.size() && !(*IMDBTitleBasicsStream).eof()) {
+        getline(*IMDBTitleBasicsStream, line, '\t');
+        auto it = std::find(directorInfo->directorsTitles.begin(), directorInfo->directorsTitles.end(), line);
+        if (it != directorInfo->directorsTitles.end()) {
             std::string titleType = "";
             bool isAdult = false;
-            getline(imdbtbas, titleType, '\t');
-            getline(imdbtbas, line, '\t');
-            getline(imdbtbas, line, '\t');
-            imdbtbas >> isAdult;
+            getline(*IMDBTitleBasicsStream, titleType, '\t');
+            getline(*IMDBTitleBasicsStream, line, '\t');
+            getline(*IMDBTitleBasicsStream, line, '\t');
+            *IMDBTitleBasicsStream >> isAdult;
             if (titleType != "movie" || isAdult) {
-                df->knownForTitles.erase(it);
-                getline(imdbtbas, line);
+                directorInfo->directorsTitles.erase(it);
+                getline(*IMDBTitleBasicsStream, line);
                 continue;
             }
             i++;
         }
-        getline(imdbtbas, line);
+        getline(*IMDBTitleBasicsStream, line);
     }
-    imdbtbas.close();
     return 0;
 }
 
-int App::checkRussianRegion(std::string takasname,
-                            std::unique_ptr<directorInfo> const &df) {
-    std::ifstream imdbtakas;
-    imdbtakas.open(takasname);
-    if (!imdbtakas.is_open()) {
-        std::cout << "File with regions database is not opened" << std::endl;
-        return 1;
-    }
+int App::checkRussianRegion(std::string titleAkasFilename, std::unique_ptr<DirectorInfo>& directorInfo) {
+    auto IMDBTitleAkasStream = std::make_unique<std::fstream>(titleAkasFilename);
     int i = 0;
     std::string line = "";
-    getline(imdbtakas, line);
-    getline(imdbtakas, line, '\t');
-    while (i < df->knownForTitles.size() && !imdbtakas.eof()) {
-        auto it = std::find(df->knownForTitles.begin(),
-                            df->knownForTitles.end(), line);
-        if (it != df->knownForTitles.end()) {
+    getline(*IMDBTitleAkasStream, line);
+    getline(*IMDBTitleAkasStream, line, '\t');
+    while (i < directorInfo->directorsTitles.size() && !(*IMDBTitleAkasStream).eof()) {
+        auto it = std::find(directorInfo->directorsTitles.begin(), directorInfo->directorsTitles.end(), line);
+        if (it != directorInfo->directorsTitles.end()) {
             while (line == *it) {
                 std::string movieTitle;
-                getline(imdbtakas, line, '\t');
-                getline(imdbtakas, movieTitle, '\t');
-                getline(imdbtakas, line, '\t');
+                getline(*IMDBTitleAkasStream, line, '\t');
+                getline(*IMDBTitleAkasStream, movieTitle, '\t');
+                getline(*IMDBTitleAkasStream, line, '\t');
                 if (line == "RU" || line == "SUHH") {
                     std::cout << movieTitle << std::endl;
                 }
-                getline(imdbtakas, line);
-                getline(imdbtakas, line, '\t');
+                getline(*IMDBTitleAkasStream, line);
+                getline(*IMDBTitleAkasStream, line, '\t');
             }
-            i++;
+            ++i;
             continue;
         }
-        getline(imdbtakas, line);
-        getline(imdbtakas, line, '\t');
+        getline(*IMDBTitleAkasStream, line);
+        getline(*IMDBTitleAkasStream, line, '\t');
     }
-    imdbtakas.close();
     return 0;
 }
 
-int App::parseCmd(std::map<std::string, std::string> *arguments, int argc,
-                  char **argv) {
+int App::parseCmd(std::unordered_map<std::string, std::string>* arguments, int argc, char** argv) {
     auto args = std::span(argv, static_cast<size_t>(argc));
     std::string prefix = "";
     std::string value = "";
-    for (int i = 1; i < argc; i++) {
+    for (int i = 1; i < argc; ++i) {
         std::stringstream arg(args[i]);
         getline(arg, prefix, '=');
         if (auto search = arguments->find(prefix); search != arguments->end()) {
             getline(arg, value);
             (*arguments)[prefix] = value;
-        } else {
-            std::cout << "Wrong input "
-                         "arguments"
-                      << std::endl;
-            return 1;
+            continue;
         }
+        std::cout << "Wrong input arguments" << std::endl;
+        return 1;
     }
     auto i = (*arguments)["-dir"].find("_");
     while (i != std::string::npos) {

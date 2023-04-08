@@ -13,96 +13,62 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
 
       - name: Install cppcheck
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y cppcheck
-
-      - name: Run cppcheck
-        run: cppcheck --enable=all --suppress=missingInclude --std=c++20 ./src ./tests
+        uses: deep5050/cppcheck-action@main
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN}}
+          
+      - name: Publish report    
+        uses: mikeal/publish-to-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH_NAME: 'hw1'
 
   clang-format:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Install clang-format
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y clang-format
-
-      - name: Run clang-format
-        run: clang-format --dry-run --Werror -style=file:./config/.clang-format ./src/*.cpp ./App/include/*.hpp ./App/src/*.cpp
-
-  build:
-    needs: [ cppcheck, clang-format, cpplint ]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Build
-        run: |
-          cmake -B build
-          cmake --build build
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Clang-format
+    - uses: DoozyX/clang-format-lint-action@v0.14
+      with:
+        source: './src ./include'
+        exclude: './tests'
+        extensions: 'hpp,cpp'
+        clangFormatVersion: 14
+        style: 'file:config/.clang-format'
 
   clang-tidy:
-    needs: [ build ]
-    runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+    - name: Checkout
+      uses: actions/checkout@v3
 
-      - name: Install clang-tidy
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y clang-tidy
+    - name: Setup cmake
+      uses: jwlawson/actions-setup-cmake@v1.13
 
-      - name: Build
-        run: |
-          cmake -B build
-          cmake --build build
+    - name: Build
+      run: |
+        cmake -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=True
+        cmake --build build
 
-      - name: Run clang-tidy
-        run: |
-          clang-tidy --config-file=./config/.clang-tidy ./src/*.cpp ./App/src/App.cpp ./App/include/App.hpp -p build
-        # clang-tidy --config-file=./config/.clang-tidy ./tests/*.cpp -p build
+    - uses: ZedThree/clang-tidy-review@v0.12.0
+      id: review
+
+    - uses: ZedThree/clang-tidy-review/upload@v0.12.0
+      id: upload-review
+      
+    - if: steps.review.outputs.total_comments > 0
+      run: exit 1
 
   cpplint:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Install cpplint
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y cpplint
-
-      - name: Run cpplint
-        run: cpplint --recursive --filter=-build/include_subdir --filter=-runtime/int --root=./ ./src ./App/src ./App/include ./tests
-
-  # unit_test:
-  #   needs: [ build ]
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout
-  #       uses: actions/checkout@v3
-
-  #     - name: Install gtest
-  #       run: |
-  #         sudo apt-get install -y libgtest-dev
-
-  #     - name: Build
-  #       run: |
-  #         cmake -B build
-  #         cmake --build build
-
-  #     - name: Run tests
-  #       run: ctest --output-on-failure --repeat-until-fail 100 --test-dir ./build/tests           
-
-#   sudo chmod a+x ./build/tests/main_tests                     
-#   sudo valgrind --leak-check=full -s ./build/tests/main_tests     
+    - name: Checkout
+      uses: actions/checkout@v1
+    - name: Install cpplint
+      uses: actions/setup-python@v1
+      run: pip install cpplint
+    - name: Run cpplint
+      run: cpplint -filter=-build/include_subdir --filter=-runtime/int --root=./ ./src ./App/src ./App/include ./tests

@@ -2,6 +2,7 @@ BasedOnStyle: Google
 AllowShortFunctionsOnASingleLine: Inline
 IndentWidth: '4'
 AccessModifierOffset: '-3'
+ColumnLimit: '150'
 Language: Cpp
 MaxEmptyLinesToKeep: '1'
 PointerAlignment: Right
