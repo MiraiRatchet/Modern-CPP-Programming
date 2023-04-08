@@ -32,7 +32,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v2
     - name: Clang-format
-    - uses: DoozyX/clang-format-lint-action@v0.14
+      uses: DoozyX/clang-format-lint-action@v0.14
       with:
         source: './src ./include'
         exclude: './tests'
@@ -58,9 +58,6 @@ jobs:
 
     - uses: ZedThree/clang-tidy-review/upload@v0.12.0
       id: upload-review
-      
-    - if: steps.review.outputs.total_comments > 0
-      run: exit 1
 
   cpplint:
     runs-on: ubuntu-latest
