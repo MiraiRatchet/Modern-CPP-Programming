@@ -1,3 +1,4 @@
 set(LibraryName App)
 add_library(${LibraryName} src/App.cpp)
-target_include_directories(${LibraryName} PUBLIC include)
+include_directories(../IOperation/include)
+target_include_directories(${LibraryName} PRIVATE include)

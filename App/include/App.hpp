@@ -1,8 +1,10 @@
+#pragma once
+
 #include <iostream>
-#include <span>
+#include <sstream>
 
 class App {
  public:
     static int Run(int argc, char** argv);
-    int parseCmd(int argc, char** argv);
+    static int parseCmd(int argc, std::stringstream& argv);
 };
